@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "protocolcompiler"
+version = "0.1.0"
+description = "Research checklists for published pluripotent-cell protocols."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Dylan Stechmann"}]
+dependencies = []
+
+[project.scripts]
+protocolcompiler = "protocolcompiler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
