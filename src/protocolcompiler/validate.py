@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from protocolcompiler.schema import Protocol, ProtocolError
 
 MEDIUM_ACTIONS = {"medium_change", "passage", "seed"}
@@ -19,8 +21,13 @@ def validate(protocol: Protocol) -> list[str]:
         errors.append("non_claims must state the work is not for administration to humans")
     if not protocol.steps:
         errors.append("no steps")
+    if (not math.isfinite(protocol.max_hours_between_medium_changes)
+            or protocol.max_hours_between_medium_changes <= 0):
+        errors.append("maximum medium-change gap must be finite and positive")
+    if len({p.name for p in protocol.parameters}) != len(protocol.parameters):
+        errors.append("duplicate parameter names")
     for param in protocol.parameters:
-        if not (param.low <= param.value <= param.high):
+        if not all(math.isfinite(v) for v in (param.low, param.value, param.high)) or not (param.low <= param.value <= param.high):
             errors.append(
                 f"{param.name}={param.value} {param.unit} is outside {param.low}–{param.high}"
             )
@@ -29,18 +36,22 @@ def validate(protocol: Protocol) -> list[str]:
         if step.id in seen:
             errors.append(f"duplicate step id {step.id}")
         seen.add(step.id)
-        if step.start_hour < 0:
-            errors.append(f"{step.id} has a negative start")
-        if step.hood_minutes < 0 or step.hood_minutes > 180:
+        if not math.isfinite(step.start_hour) or step.start_hour < 0:
+            errors.append(f"{step.id} must have a finite nonnegative start")
+        if not math.isfinite(step.hood_minutes) or step.hood_minutes < 0 or step.hood_minutes > 180:
             errors.append(f"{step.id} hood time is not plausible")
-        if step.volume_ml is not None and not (0 < step.volume_ml <= 15):
+        if step.volume_ml is not None and (not math.isfinite(step.volume_ml) or not (0 < step.volume_ml <= 15)):
             errors.append(f"{step.id} volume {step.volume_ml} mL is outside 0–15 mL per well")
         if step.action not in {
             "coat", "seed", "medium_change", "passage", "qc", "endpoint", "note",
         }:
             errors.append(f"{step.id} has unknown action {step.action}")
-    _exclusive_overlap(protocol, errors)
-    _feed_gaps(protocol, errors)
+    for row in protocol.formulation:
+        if not math.isfinite(row.amount) or row.amount <= 0:
+            errors.append(f"{row.name} formulation amount must be finite and positive")
+    if not errors:
+        _exclusive_overlap(protocol, errors)
+        _feed_gaps(protocol, errors)
     if not any(step.action == "qc" or step.gates for step in protocol.steps):
         errors.append("no QC gate")
     if not any(step.action == "endpoint" for step in protocol.steps):
@@ -71,6 +82,17 @@ def _feed_gaps(protocol: Protocol, errors: list[str]) -> None:
         for step in protocol.steps
         if step.action in MEDIUM_ACTIONS
     )
+    if not feeds:
+        errors.append("no seed, passage, or medium change")
+        return
+    # The interval after the final feed matters as much as interior intervals.
+    endpoints = [s for s in protocol.steps if s.action == "endpoint"]
+    if endpoints:
+        final = max(endpoints, key=lambda s: s.start_hour)
+        if final.start_hour < feeds[-1][0]:
+            errors.append("endpoint occurs before the final medium action")
+        elif final.start_hour > feeds[-1][0]:
+            feeds.append((final.start_hour, final.id))
     for (t0, a), (t1, b) in zip(feeds, feeds[1:]):
         gap = t1 - t0
         if gap > protocol.max_hours_between_medium_changes:

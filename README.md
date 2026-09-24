@@ -40,3 +40,18 @@ Pair it with [brightfield-colony-qc](https://github.com/dylanstechmann/brightfie
 ## License
 
 MIT.
+
+## Reproducible validation (v0.2)
+
+Install with `python -m pip install -e .`. Compiled JSON now contains a canonical
+`protocol_sha256` over the complete input dataclass. Archive it with a review
+so the reviewed checklist can be identified exactly.
+
+Validation rejects nonfinite schedule/parameter/formulation values, duplicate
+parameter names and invalid feed-gap limits. It checks the interval from the
+last feed to the endpoint as well as intervals between feeds.
+
+This checks encoded consistency, not the accuracy of a source transcription.
+Programmatically changing a parameter does not rewrite the narrative steps;
+review them together. No new biological protocol or parameter range was added
+in this revision.

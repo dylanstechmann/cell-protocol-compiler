@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+import hashlib
+import json
+
 from protocolcompiler.schema import Protocol
 from protocolcompiler.validate import validate
 
@@ -31,6 +35,9 @@ def compile_protocol(protocol: Protocol) -> dict:
             bom.setdefault(reagent, []).append(step.id)
     checklist = _markdown(protocol, schedule, warnings)
     return {
+        "schema_version": 1,
+        "protocol_sha256": hashlib.sha256(json.dumps(asdict(protocol), sort_keys=True,
+                                                     allow_nan=False).encode()).hexdigest(),
         "id": protocol.id,
         "title": protocol.title,
         "citation": protocol.citation,
