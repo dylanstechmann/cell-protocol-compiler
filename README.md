@@ -51,8 +51,8 @@ Validation rejects nonfinite schedule/parameter/formulation values, duplicate
 parameter names and invalid feed-gap limits. It checks the interval from the
 last feed to the endpoint as well as intervals between feeds.
 It also requires exactly one endpoint, no active step after it, and an explicit
-QC gate on an executable step. A narrative note or an empty `qc` step does not
-count as a gate.
+QC gate on an executable step. Gates must be lists of nonblank strings. A
+narrative note, blank gate label, or empty `qc` step does not count as a gate.
 
 This checks encoded consistency, not the accuracy of a source transcription.
 Programmatically changing a parameter does not rewrite the narrative steps;

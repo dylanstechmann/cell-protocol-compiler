@@ -62,3 +62,30 @@ class ValidationTests(unittest.TestCase):
             step.gates = []
         with self.assertRaisesRegex(ProtocolError, "no QC gate"):
             validate(protocol)
+
+    def test_blank_or_nontext_entries_cannot_satisfy_the_qc_gate_requirement(self):
+        for gate in ["", "   ", "\t\n", "\u2003", None, 0, True, []]:
+            with self.subTest(gate=gate):
+                protocol = giwi()
+                for step in protocol.steps:
+                    step.gates = []
+                protocol.steps[0].gates = [gate]
+                with self.assertRaisesRegex(ProtocolError, "no QC gate"):
+                    validate(protocol)
+
+    def test_malformed_gate_fields_are_rejected_before_compilation(self):
+        for gates in [None, 1, "review", {"review": True}, ["review", " "], ["review", 1]]:
+            with self.subTest(gates=gates):
+                protocol = giwi()
+                protocol.steps[0].gates = gates
+                with self.assertRaisesRegex(ProtocolError, "gates must be a list of nonblank strings"):
+                    compile_protocol(protocol)
+
+    def test_nonblank_gate_on_an_executable_step_is_preserved(self):
+        protocol = giwi()
+        for step in protocol.steps:
+            step.gates = []
+        protocol.steps[0].gates = ["  documented review  "]
+        compiled = compile_protocol(protocol)
+        step = next(row for row in compiled["schedule"] if row["id"] == protocol.steps[0].id)
+        self.assertEqual(step["gates"], ["  documented review  "])
