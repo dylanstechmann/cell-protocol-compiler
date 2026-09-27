@@ -52,10 +52,14 @@ def validate(protocol: Protocol) -> list[str]:
     if not errors:
         _exclusive_overlap(protocol, errors)
         _feed_gaps(protocol, errors)
-    if not any(step.action == "qc" or step.gates for step in protocol.steps):
+    if not any(step.gates for step in protocol.steps if step.action != "note"):
         errors.append("no QC gate")
-    if not any(step.action == "endpoint" for step in protocol.steps):
-        errors.append("no endpoint")
+    endpoints = [step for step in protocol.steps if step.action == "endpoint"]
+    if len(endpoints) != 1:
+        errors.append("exactly one endpoint is required")
+    elif any(step.action != "note" and step.start_hour > endpoints[0].start_hour
+             for step in protocol.steps):
+        errors.append("active step occurs after endpoint")
     _dual_smad_warning(protocol, warnings)
     if errors:
         raise ProtocolError(errors)
