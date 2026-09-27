@@ -32,6 +32,7 @@ def validate(protocol: Protocol) -> list[str]:
                 f"{param.name}={param.value} {param.unit} is outside {param.low}–{param.high}"
             )
     seen = set()
+    has_qc_gate = False
     for step in protocol.steps:
         if step.id in seen:
             errors.append(f"duplicate step id {step.id}")
@@ -46,16 +47,25 @@ def validate(protocol: Protocol) -> list[str]:
             "coat", "seed", "medium_change", "passage", "qc", "endpoint", "note",
         }:
             errors.append(f"{step.id} has unknown action {step.action}")
+        if not isinstance(step.gates, list) or any(
+                not isinstance(gate, str) or not gate.strip() for gate in step.gates):
+            errors.append(f"{step.id} gates must be a list of nonblank strings")
+        elif step.action != "note" and step.gates:
+            has_qc_gate = True
     for row in protocol.formulation:
         if not math.isfinite(row.amount) or row.amount <= 0:
             errors.append(f"{row.name} formulation amount must be finite and positive")
     if not errors:
         _exclusive_overlap(protocol, errors)
         _feed_gaps(protocol, errors)
-    if not any(step.action == "qc" or step.gates for step in protocol.steps):
+    if not has_qc_gate:
         errors.append("no QC gate")
-    if not any(step.action == "endpoint" for step in protocol.steps):
-        errors.append("no endpoint")
+    endpoints = [step for step in protocol.steps if step.action == "endpoint"]
+    if len(endpoints) != 1:
+        errors.append("exactly one endpoint is required")
+    elif any(step.action != "note" and step.start_hour > endpoints[0].start_hour
+             for step in protocol.steps):
+        errors.append("active step occurs after endpoint")
     _dual_smad_warning(protocol, warnings)
     if errors:
         raise ProtocolError(errors)
