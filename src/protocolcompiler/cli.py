@@ -13,7 +13,9 @@ from protocolcompiler.library import LIBRARY
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Compile a published cell-culture checklist")
     parser.add_argument("protocol", choices=sorted(LIBRARY))
-    parser.add_argument("--markdown", action="store_true", help="print the checklist instead of JSON")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--markdown", action="store_true", help="print the checklist instead of JSON")
+    group.add_argument("--json", action="store_true", help="print compiled protocol as JSON (default)")
     args = parser.parse_args(argv)
     compiled = compile_protocol(LIBRARY[args.protocol]())
     if args.markdown:

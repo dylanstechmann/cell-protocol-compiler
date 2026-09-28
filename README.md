@@ -11,6 +11,7 @@ This is a protocol formalization exercise. It is not a lab and it does not autho
 | `e8_feeder_free_maintenance` | Feeder-free maintenance on the academic E8 formulation (Chen 2011), EDTA passage context, ROCK inhibitor for 24 h | [10.1038/nmeth.1593](https://doi.org/10.1038/nmeth.1593) |
 | `dual_smad_neural` | Adherent neural induction, 10 µM SB431542 + 200 ng/mL Noggin, SRM toward N2 | [10.1038/nbt.1529](https://doi.org/10.1038/nbt.1529) |
 | `giwi_cardiac` | Wnt activation then Wnt inhibition. CHIR defaults to 6 µM inside 2–12, not to the paper's 12 µM example | [10.1038/nprot.2012.150](https://doi.org/10.1038/nprot.2012.150) |
+| `hepatocyte_differentiation` | 4-stage differentiation into functional hepatocyte-like cells: Activin A, BMP4/FGF2, HGF, Oncostatin M / Dex | [10.1038/nprot.2012.153](https://doi.org/10.1038/nprot.2012.153) |
 
 LDN-193189 is a parameter on the neural checklist and defaults to **0**. Later protocols use ~100 nM as a **substitute** for Noggin. This compiler does not stack them.
 
@@ -26,6 +27,7 @@ LDN-193189 is a parameter on the neural checklist and defaults to **0**. Later p
 ```bash
 make test
 PYTHONPATH=src python3 -m protocolcompiler.cli giwi_cardiac --markdown
+PYTHONPATH=src python3 -m protocolcompiler.cli hepatocyte_differentiation --json
 PYTHONPATH=src python3 -m protocolcompiler.cli dual_smad_neural
 ```
 
