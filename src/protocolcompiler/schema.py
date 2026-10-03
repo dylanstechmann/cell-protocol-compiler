@@ -64,6 +64,7 @@ class Protocol:
     steps: list[Step] = field(default_factory=list)
     non_claims: list[str] = field(default_factory=list)
     required_parameters: tuple[str, ...] = ()
+    required_step_reagents: dict[str, tuple[str, ...]] = field(default_factory=dict)
     compilable: bool = True
     compilability_note: str = ""
 

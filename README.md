@@ -28,6 +28,7 @@ LDN-193189 is a parameter on the neural checklist and defaults to **0**. Later p
 make test
 PYTHONPATH=src python3 -m protocolcompiler.cli giwi_cardiac --markdown
 PYTHONPATH=src python3 -m protocolcompiler.cli dual_smad_neural
+PYTHONPATH=src python3 -m protocolcompiler.cli dual_smad_neural --constraints
 ```
 
 `hepatocyte_differentiation` intentionally exits with an error. The previous
@@ -63,3 +64,19 @@ This checks encoded consistency, not the accuracy of a source transcription.
 Programmatically changing a parameter does not rewrite the narrative steps;
 review them together. No new biological protocol or parameter range was added
 in this revision.
+
+## Versioned planner constraints (v0.3)
+
+`--constraints` prints a machine-readable export of the same published
+windows: parameter name, unit, `low`–`high`, the compiled default, required
+flags, per-step required gates and reagents, the allowed action vocabulary,
+the medium-change gap limit, and mutually exclusive alternatives (Noggin and
+LDN-193189) as data. It carries the `protocol_sha256` of the exact source
+record so a planner can pin which checklist version bounded its search. A
+quarantined source record exports nothing.
+
+[diffmedia-loop](https://github.com/dylanstechmann/diffmedia-loop) consumes
+this export instead of maintaining a divergent copy of the windows. A
+widening of any window here requires regenerating that bundle; its sync test
+fails first. The export states limits a search is allowed to use. It is not
+an optimum, and it is not a dose.

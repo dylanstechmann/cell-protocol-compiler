@@ -7,6 +7,7 @@ import json
 import sys
 
 from protocolcompiler.compile import compile_protocol
+from protocolcompiler.constraints import export_constraints
 from protocolcompiler.library import LIBRARY
 from protocolcompiler.schema import ProtocolError
 
@@ -17,9 +18,16 @@ def main(argv=None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--markdown", action="store_true", help="print the checklist instead of JSON")
     group.add_argument("--json", action="store_true", help="print compiled protocol as JSON (default)")
+    group.add_argument("--constraints", action="store_true",
+                       help="print the versioned planner constraint export instead of the compiled checklist")
     args = parser.parse_args(argv)
     try:
-        compiled = compile_protocol(LIBRARY[args.protocol]())
+        protocol = LIBRARY[args.protocol]()
+        if args.constraints:
+            json.dump(export_constraints(protocol), sys.stdout, indent=2)
+            sys.stdout.write("\n")
+            return 0
+        compiled = compile_protocol(protocol)
     except ProtocolError as exc:
         parser.error(str(exc))
     if args.markdown:

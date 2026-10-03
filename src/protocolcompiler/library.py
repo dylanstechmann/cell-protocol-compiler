@@ -137,6 +137,10 @@ def dual_smad() -> Protocol:
                  "Endpoint is a research intermediate, not a graft.",
                  "endpoint", hood_minutes=5, gates=["PAX6"]),
         ],
+        required_step_reagents={
+            step_id: ("SB431542", "Noggin")
+            for step_id in ("induct_0", "induct_1", "induct_2", "induct_4", "induct_6", "induct_8")
+        },
         non_claims=list(NONCLAIMS),
     )
 
@@ -204,6 +208,7 @@ def giwi() -> Protocol:
                  "Flow or immunostaining for cardiac troponin T is the paper's purity readout. This checklist ends there.",
                  "endpoint", hood_minutes=20, gates=["cTnT"]),
         ],
+        required_step_reagents={"chir": ("CHIR99021",), "iwp": ("IWP2",)},
         non_claims=list(NONCLAIMS) + [
             "Not a recipe for an allogeneic cardiomyocyte product.",
         ],
