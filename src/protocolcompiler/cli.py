@@ -8,6 +8,7 @@ import sys
 
 from protocolcompiler.compile import compile_protocol
 from protocolcompiler.library import LIBRARY
+from protocolcompiler.schema import ProtocolError
 
 
 def main(argv=None) -> int:
@@ -17,7 +18,10 @@ def main(argv=None) -> int:
     group.add_argument("--markdown", action="store_true", help="print the checklist instead of JSON")
     group.add_argument("--json", action="store_true", help="print compiled protocol as JSON (default)")
     args = parser.parse_args(argv)
-    compiled = compile_protocol(LIBRARY[args.protocol]())
+    try:
+        compiled = compile_protocol(LIBRARY[args.protocol]())
+    except ProtocolError as exc:
+        parser.error(str(exc))
     if args.markdown:
         sys.stdout.write(compiled["checklist_markdown"])
         return 0

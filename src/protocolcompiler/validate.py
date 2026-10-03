@@ -11,6 +11,9 @@ REQUIRED_NONCLAIM = "not for administration to humans"
 
 
 def validate(protocol: Protocol) -> list[str]:
+    if not protocol.compilable:
+        note = protocol.compilability_note or "source review has not cleared this protocol for compilation"
+        raise ProtocolError([f"protocol is not eligible for compilation: {note}"])
     errors: list[str] = []
     warnings: list[str] = []
     if not protocol.doi.startswith("10."):
@@ -26,6 +29,10 @@ def validate(protocol: Protocol) -> list[str]:
         errors.append("maximum medium-change gap must be finite and positive")
     if len({p.name for p in protocol.parameters}) != len(protocol.parameters):
         errors.append("duplicate parameter names")
+    present_parameters = {parameter.name for parameter in protocol.parameters}
+    for name in protocol.required_parameters:
+        if name not in present_parameters:
+            errors.append(f"missing required parameter: {name}")
     for param in protocol.parameters:
         if not all(math.isfinite(v) for v in (param.low, param.value, param.high)) or not (param.low <= param.value <= param.high):
             errors.append(
@@ -52,6 +59,10 @@ def validate(protocol: Protocol) -> list[str]:
             errors.append(f"{step.id} gates must be a list of nonblank strings")
         elif step.action != "note" and step.gates:
             has_qc_gate = True
+        if isinstance(step.gates, list) and all(isinstance(gate, str) and gate.strip() for gate in step.gates):
+            missing_gates = set(step.required_gates) - set(step.gates)
+            if missing_gates:
+                errors.append(f"{step.id} is missing required gate(s): {', '.join(sorted(missing_gates))}")
     for row in protocol.formulation:
         if not math.isfinite(row.amount) or row.amount <= 0:
             errors.append(f"{row.name} formulation amount must be finite and positive")
@@ -66,7 +77,7 @@ def validate(protocol: Protocol) -> list[str]:
     elif any(step.action != "note" and step.start_hour > endpoints[0].start_hour
              for step in protocol.steps):
         errors.append("active step occurs after endpoint")
-    _dual_smad_warning(protocol, warnings)
+    _validate_dual_smad_constraints(protocol, errors)
     if errors:
         raise ProtocolError(errors)
     return warnings
@@ -112,10 +123,13 @@ def _feed_gaps(protocol: Protocol, errors: list[str]) -> None:
             )
 
 
-def _dual_smad_warning(protocol: Protocol, warnings: list[str]) -> None:
-    names = {step.id for step in protocol.steps}
-    joined = " ".join(step.detail.lower() for step in protocol.steps)
-    if "noggin" in joined and "ldn" in joined and "substitute" not in joined:
-        warnings.append("Noggin and LDN-193189 are both mentioned without saying one substitutes for the other.")
-    if "ldn_and_noggin" in names:
-        warnings.append("combined Noggin plus LDN was not the Chambers 2009 condition")
+def _validate_dual_smad_constraints(protocol: Protocol, errors: list[str]) -> None:
+    parameters = {parameter.name.casefold(): parameter for parameter in protocol.parameters}
+    noggin = next((p for name, p in parameters.items() if "noggin" in name), None)
+    ldn = next((p for name, p in parameters.items() if "ldn193189" in name or "ldn_193189" in name), None)
+    if noggin is not None and ldn is not None and noggin.value > 0 and ldn.value > 0:
+        errors.append("Noggin and LDN-193189 are mutually exclusive in the encoded dual-SMAD workflow")
+    if ldn is not None and ldn.value > 0:
+        noggin_references = [step.id for step in protocol.steps if "noggin" in " ".join(step.reagents).casefold()]
+        if noggin_references:
+            errors.append("LDN-193189 is set positive while steps still list Noggin; update structured reagents and narrative together")

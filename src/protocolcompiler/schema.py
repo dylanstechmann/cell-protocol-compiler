@@ -40,6 +40,13 @@ class Step:
     volume_ml: float | None = None
     reagents: list[str] = field(default_factory=list)
     gates: list[str] = field(default_factory=list)
+    required_gates: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        # Freeze the authored checklist gates so later accidental deletion or
+        # substitution cannot make an incomplete step validate itself.
+        if not self.required_gates:
+            self.required_gates = tuple(self.gates)
 
 
 @dataclass
@@ -56,6 +63,15 @@ class Protocol:
     formulation: list[FormulationComponent] = field(default_factory=list)
     steps: list[Step] = field(default_factory=list)
     non_claims: list[str] = field(default_factory=list)
+    required_parameters: tuple[str, ...] = ()
+    compilable: bool = True
+    compilability_note: str = ""
+
+    def __post_init__(self):
+        # The factory's parameter names form its required schema. Callers may
+        # tune values, but removing one must be an explicit schema change.
+        if not self.required_parameters:
+            self.required_parameters = tuple(parameter.name for parameter in self.parameters)
 
     def parameter(self, name: str) -> Parameter:
         for item in self.parameters:

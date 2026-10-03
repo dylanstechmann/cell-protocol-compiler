@@ -40,6 +40,8 @@ def compile_protocol(protocol: Protocol) -> dict:
                                                      allow_nan=False).encode()).hexdigest(),
         "id": protocol.id,
         "title": protocol.title,
+        "compilable": protocol.compilable,
+        "compilability_note": protocol.compilability_note,
         "citation": protocol.citation,
         "doi": protocol.doi,
         "warnings": warnings,

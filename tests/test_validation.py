@@ -83,8 +83,6 @@ class ValidationTests(unittest.TestCase):
 
     def test_nonblank_gate_on_an_executable_step_is_preserved(self):
         protocol = giwi()
-        for step in protocol.steps:
-            step.gates = []
         protocol.steps[0].gates = ["  documented review  "]
         compiled = compile_protocol(protocol)
         step = next(row for row in compiled["schedule"] if row["id"] == protocol.steps[0].id)
