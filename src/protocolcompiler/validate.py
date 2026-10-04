@@ -73,6 +73,12 @@ def validate(protocol: Protocol) -> list[str]:
     if not protocol.compilable:
         note = protocol.compilability_note or "source review has not cleared this protocol for compilation"
         raise ProtocolError([f"protocol is not eligible for compilation: {note}"])
+    # Known workflow requirements come from the source-reviewed factory,
+    # never from mutable declarations carried by the candidate itself.
+    from protocolcompiler.library import LIBRARY
+    canonical = LIBRARY[protocol.id]() if protocol.id in LIBRARY else None
+    if canonical is not None and not canonical.compilable:
+        raise ProtocolError([f"protocol is not eligible for compilation: {canonical.compilability_note}"])
     errors: list[str] = []
     warnings: list[str] = []
     if not protocol.doi.startswith("10."):
@@ -89,7 +95,24 @@ def validate(protocol: Protocol) -> list[str]:
     if len({p.name for p in protocol.parameters}) != len(protocol.parameters):
         errors.append("duplicate parameter names")
     present_parameters = {parameter.name for parameter in protocol.parameters}
-    for name in protocol.required_parameters:
+    required_parameters = set(protocol.required_parameters)
+    if canonical is not None:
+        required_parameters.update(canonical.required_parameters)
+        canonical_parameters = {parameter.name: parameter for parameter in canonical.parameters}
+        for parameter in protocol.parameters:
+            reference = canonical_parameters.get(parameter.name)
+            if reference is None:
+                errors.append(f"unknown parameter for {protocol.id}: {parameter.name}")
+                continue
+            if parameter.unit != reference.unit:
+                errors.append(f"{parameter.name} unit must remain {reference.unit}")
+            if (not all(math.isfinite(v) for v in (parameter.low, parameter.high))
+                    or not reference.low <= parameter.low <= parameter.high <= reference.high):
+                errors.append(f"{parameter.name} changes the source-reviewed parameter window")
+        if (math.isfinite(protocol.max_hours_between_medium_changes)
+                and protocol.max_hours_between_medium_changes > canonical.max_hours_between_medium_changes):
+            errors.append("maximum medium-change gap exceeds the source-reviewed limit")
+    for name in sorted(required_parameters):
         if name not in present_parameters:
             errors.append(f"missing required parameter: {name}")
     inactive_alternatives = _inactive_alternative_values(protocol)
@@ -99,6 +122,10 @@ def validate(protocol: Protocol) -> list[str]:
             and param.low <= param.value <= param.high
         )
         if in_window:
+            continue
+        if (not all(math.isfinite(v) for v in (param.low, param.value, param.high))
+                or param.low > param.high):
+            errors.append(f"{param.name} requires finite, ordered bounds and value")
             continue
         inactive = inactive_alternatives.get(param.name)
         if inactive is not None and math.isclose(param.value, inactive, rel_tol=0.0, abs_tol=1e-12):
@@ -120,12 +147,25 @@ def validate(protocol: Protocol) -> list[str]:
     )
 
     step_by_id = {step.id: step for step in protocol.steps}
-    for unknown in sorted(set(protocol.required_step_reagents) - set(step_by_id)):
+    reagent_rules = {step_id: set(reagents) for step_id, reagents in protocol.required_step_reagents.items()}
+    canonical_steps = {}
+    if canonical is not None:
+        canonical_steps = {step.id: step for step in canonical.steps}
+        for step_id, reagents in canonical.required_step_reagents.items():
+            reagent_rules.setdefault(step_id, set()).update(reagents)
+        for step in canonical.steps:
+            if step.required_gates and step.id not in step_by_id:
+                errors.append(f"missing required QC step: {step.id}")
+    for unknown in sorted(set(reagent_rules) - set(step_by_id)):
         errors.append(f"required reagent rule references unknown step {unknown}")
     ldn = next((p for p in protocol.parameters
                 if "ldn193189" in p.name.casefold().replace("_", "")), None)
     use_ldn_substitute = ldn is not None and ldn.value > 0
     for step in protocol.steps:
+        reference_step = canonical_steps.get(step.id)
+        if (reference_step is not None and reference_step.required_gates
+                and step.action != reference_step.action):
+            errors.append(f"{step.id} changes the source-reviewed QC action")
         if step.id in seen:
             errors.append(f"duplicate step id {step.id}")
         seen.add(step.id)
@@ -145,11 +185,14 @@ def validate(protocol: Protocol) -> list[str]:
         elif step.action != "note" and step.gates:
             has_qc_gate = True
         if isinstance(step.gates, list) and all(isinstance(gate, str) and gate.strip() for gate in step.gates):
-            missing_gates = set(step.required_gates) - set(step.gates)
+            required_gates = set(step.required_gates)
+            if step.id in canonical_steps:
+                required_gates.update(canonical_steps[step.id].required_gates)
+            missing_gates = required_gates - set(step.gates)
             if missing_gates:
                 errors.append(f"{step.id} is missing required gate(s): {', '.join(sorted(missing_gates))}")
         actual_reagents = {reagent.casefold() for reagent in step.reagents if isinstance(reagent, str)}
-        for reagent in protocol.required_step_reagents.get(step.id, ()):
+        for reagent in reagent_rules.get(step.id, ()):
             expected = "LDN-193189" if use_ldn_substitute and reagent.casefold() == "noggin" else reagent
             if expected.casefold() not in actual_reagents:
                 errors.append(f"{step.id} is missing required reagent: {expected}")
@@ -167,7 +210,7 @@ def validate(protocol: Protocol) -> list[str]:
     elif any(step.action != "note" and step.start_hour > endpoints[0].start_hour
              for step in protocol.steps):
         errors.append("active step occurs after endpoint")
-    _validate_dual_smad_constraints(protocol, errors)
+    _validate_dual_smad_constraints(protocol, errors, required_step_ids=set(reagent_rules))
     if errors:
         raise ProtocolError(errors)
     return warnings
@@ -213,7 +256,7 @@ def _feed_gaps(protocol: Protocol, errors: list[str]) -> None:
             )
 
 
-def _validate_dual_smad_constraints(protocol: Protocol, errors: list[str]) -> None:
+def _validate_dual_smad_constraints(protocol: Protocol, errors: list[str], *, required_step_ids: set[str]) -> None:
     parameters = {parameter.name.casefold(): parameter for parameter in protocol.parameters}
     noggin = next((p for name, p in parameters.items() if "noggin" in name), None)
     ldn = next((p for name, p in parameters.items() if "ldn193189" in name or "ldn_193189" in name), None)
@@ -225,7 +268,7 @@ def _validate_dual_smad_constraints(protocol: Protocol, errors: list[str]) -> No
         noggin_references = [
             step.id for step in protocol.steps
             if "noggin" in " ".join(step.reagents).casefold()
-            or (step.id in protocol.required_step_reagents and "noggin" in step.detail.casefold())
+            or (step.id in required_step_ids and "noggin" in step.detail.casefold())
         ]
         if noggin_references:
             errors.append("LDN-193189 is set positive while an induction step still lists or describes Noggin; update structured reagents and narrative together")

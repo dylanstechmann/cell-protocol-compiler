@@ -80,3 +80,10 @@ this export instead of maintaining a divergent copy of the windows. A
 widening of any window here requires regenerating that bundle; its sync test
 fails first. The export states limits a search is allowed to use. It is not
 an optimum, and it is not a dose.
+
+Known workflows are checked against their source-reviewed factory requirements.
+Clearing a candidate's required-field metadata cannot remove gates or reagents;
+changing units, widening parameter windows, or relaxing the feed-gap limit is
+rejected. Inactive alternatives still require finite, ordered bounds. Narrower
+windows and valid parameter values remain available for an explicit checklist
+variant; numeric and narrative changes still require review together.

@@ -71,6 +71,31 @@ class ConstraintExportTests(unittest.TestCase):
             any("not eligible for compilation" in err for err in caught.exception.errors)
         )
 
+    def test_export_keeps_source_requirements_when_candidate_metadata_is_cleared(self):
+        protocol = giwi()
+        expected = export_constraints(protocol)
+        protocol.required_parameters = ()
+        protocol.required_step_reagents = {}
+        for step in protocol.steps:
+            step.required_gates = ()
+        actual = export_constraints(protocol)
+        self.assertTrue(all(item["required"] for item in actual["parameters"]))
+        self.assertEqual(actual["required_gates"], expected["required_gates"])
+        self.assertEqual(actual["required_step_reagents"], expected["required_step_reagents"])
+
+    def test_export_resolves_the_active_ldn_reagent_alternative(self):
+        protocol = dual_smad()
+        protocol.parameter("Noggin_ng_per_mL").value = 0
+        protocol.parameter("LDN193189_nM").value = 100
+        for step in protocol.steps:
+            step.reagents = ["LDN-193189" if name == "Noggin" else name
+                             for name in step.reagents]
+        next(step for step in protocol.steps if step.id == "induct_0").detail = (
+            "Switch to KSR-based SRM with SB431542 and LDN-193189.")
+        export = export_constraints(protocol)
+        self.assertEqual(export["required_step_reagents"]["induct_0"],
+                         ["LDN-193189", "SB431542"])
+
     def test_export_is_deterministic(self):
         self.assertEqual(export_constraints(giwi()), export_constraints(giwi()))
         self.assertEqual(protocol_hash(dual_smad()), protocol_hash(dual_smad()))

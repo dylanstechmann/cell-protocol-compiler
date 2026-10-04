@@ -1,7 +1,7 @@
 import unittest
 
 from protocolcompiler.compile import compile_protocol
-from protocolcompiler.library import giwi
+from protocolcompiler.library import dual_smad, giwi, hepatocytes
 from protocolcompiler.schema import ProtocolError, Step
 from protocolcompiler.validate import validate
 
@@ -87,3 +87,66 @@ class ValidationTests(unittest.TestCase):
         compiled = compile_protocol(protocol)
         step = next(row for row in compiled["schedule"] if row["id"] == protocol.steps[0].id)
         self.assertEqual(step["gates"], ["  documented review  "])
+
+class SourceContractTests(unittest.TestCase):
+    def test_mutable_requirement_lists_cannot_bypass_published_workflow(self):
+        protocol = giwi()
+        protocol.required_parameters = ()
+        protocol.parameters = []
+        with self.assertRaisesRegex(ProtocolError, "missing required parameter"):
+            validate(protocol)
+        protocol = giwi()
+        for step in protocol.steps:
+            step.required_gates = ()
+            step.gates = ["arbitrary review"]
+        with self.assertRaisesRegex(ProtocolError, "missing required gate"):
+            validate(protocol)
+        protocol = dual_smad()
+        protocol.required_step_reagents = {}
+        for step in protocol.steps:
+            step.reagents = []
+        with self.assertRaisesRegex(ProtocolError, "missing required reagent"):
+            validate(protocol)
+
+    def test_window_units_and_feed_limit_cannot_be_widened(self):
+        for field, value, expected in (("high", 1000, "source-reviewed parameter window"),
+                                       ("unit", "mM", "unit must remain")):
+            protocol = giwi()
+            setattr(protocol.parameter("CHIR99021_uM"), field, value)
+            with self.subTest(field=field), self.assertRaisesRegex(ProtocolError, expected):
+                validate(protocol)
+        protocol = giwi()
+        protocol.max_hours_between_medium_changes = 1000
+        with self.assertRaisesRegex(ProtocolError, "source-reviewed limit"):
+            validate(protocol)
+
+    def test_inactive_alternative_cannot_bypass_nonfinite_bounds(self):
+        for field, value in (("low", float("nan")), ("high", float("inf")), ("low", 1000)):
+            protocol = dual_smad()
+            setattr(protocol.parameter("LDN193189_nM"), field, value)
+            with self.subTest(field=field), self.assertRaises(ProtocolError):
+                validate(protocol)
+
+    def test_clearing_reagent_rules_cannot_hide_an_inconsistent_narrative(self):
+        protocol = dual_smad()
+        protocol.parameter("Noggin_ng_per_mL").value = 0
+        protocol.parameter("LDN193189_nM").value = 100
+        for step in protocol.steps:
+            step.reagents = ["LDN-193189" if name == "Noggin" else name
+                             for name in step.reagents]
+        protocol.required_step_reagents = {}
+        with self.assertRaisesRegex(ProtocolError, "still lists or describes Noggin"):
+            validate(protocol)
+
+    def test_named_qc_action_cannot_be_demoted_to_a_note(self):
+        protocol = giwi()
+        step = next(step for step in protocol.steps if step.id == "beating")
+        step.action = "note"
+        with self.assertRaisesRegex(ProtocolError, "source-reviewed QC action"):
+            validate(protocol)
+
+    def test_source_quarantine_cannot_be_cleared_on_a_candidate(self):
+        protocol = hepatocytes()
+        protocol.compilable = True
+        with self.assertRaisesRegex(ProtocolError, "not eligible for compilation"):
+            validate(protocol)
