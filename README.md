@@ -87,3 +87,27 @@ changing units, widening parameter windows, or relaxing the feed-gap limit is
 rejected. Inactive alternatives still require finite, ordered bounds. Narrower
 windows and valid parameter values remain available for an explicit checklist
 variant; numeric and narrative changes still require review together.
+
+## Source-linked result records
+
+After a collaborator records observations, `validate-result` checks that the
+record pins both the source protocol and the exact compiled checklist, explicitly
+accounts for every compiled gate (including `not_measured` and `not_applicable`
+outcomes), links each measured gate and deviation to a local evidence artifact,
+and matches every artifact's SHA-256 and byte count. The validator recomputes
+the compiled checklist digest so a changed schedule cannot retain a stale hash.
+Artifact paths must stay beside the result record. The versioned contract is
+[`schemas/protocol-result.schema.json`](schemas/protocol-result.schema.json).
+
+```bash
+PYTHONPATH=src python3 -m protocolcompiler.cli dual_smad_neural --json > artifacts/dual-smad.json
+PYTHONPATH=src python3 -m protocolcompiler.cli validate-result \
+  --compiled-protocol artifacts/dual-smad.json \
+  --result studies/run-001/result.json \
+  --out artifacts/run-001-validation.json
+```
+
+This validates the integrity and structure of a result record. It does not
+decide whether the protocol was followed correctly, whether an assay is
+reliable, or whether a culture succeeded. Preserve deviations and unmeasured
+gates in the record; this command does not change the compiled checklist.

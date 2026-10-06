@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Compiled culture checklist result record",
+  "description": "A source-linked observation record only; validation does not certify protocol execution or biological success.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_id", "protocol_sha256", "compiled_protocol_sha256", "run_id", "disposition", "evidence_artifacts", "gate_results", "deviations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "protocol_id": { "type": "string", "minLength": 1 },
+    "protocol_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "compiled_protocol_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "disposition": { "enum": ["completed", "partial", "aborted"] },
+    "evidence_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "path", "sha256", "size_bytes"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "gate_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "gate", "status"],
+        "properties": {
+          "step_id": { "type": "string", "minLength": 1 },
+          "gate": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["measured_pass", "measured_fail", "indeterminate", "not_measured", "not_applicable"] },
+          "observed_value": { "oneOf": [{"type": "number"}, {"type": "string", "minLength": 1}] },
+          "unit": { "type": "string", "minLength": 1 },
+          "method": { "type": "string", "minLength": 1 },
+          "evidence_artifact_id": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "enum": ["measured_pass", "measured_fail", "indeterminate"] } }, "required": ["status"] },
+            "then": { "required": ["observed_value", "unit", "method", "evidence_artifact_id"] }
+          },
+          {
+            "if": { "properties": { "status": { "enum": ["not_measured", "not_applicable"] } }, "required": ["status"] },
+            "then": { "required": ["reason"] }
+          }
+        ]
+      }
+    },
+    "deviations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "item", "planned_value", "observed_value", "unit", "reason", "evidence_artifact_id"],
+        "properties": {
+          "step_id": { "type": "string", "minLength": 1 },
+          "item": { "type": "string", "minLength": 1 },
+          "planned_value": { "oneOf": [{"type": "number"}, {"type": "string", "minLength": 1}] },
+          "observed_value": { "oneOf": [{"type": "number"}, {"type": "string", "minLength": 1}] },
+          "unit": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "evidence_artifact_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

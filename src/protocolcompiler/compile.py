@@ -34,7 +34,7 @@ def compile_protocol(protocol: Protocol) -> dict:
         for reagent in step.reagents:
             bom.setdefault(reagent, []).append(step.id)
     checklist = _markdown(protocol, schedule, warnings)
-    return {
+    compiled = {
         "schema_version": 1,
         "protocol_sha256": hashlib.sha256(json.dumps(asdict(protocol), sort_keys=True,
                                                      allow_nan=False).encode()).hexdigest(),
@@ -65,6 +65,11 @@ def compile_protocol(protocol: Protocol) -> dict:
         "critical_control_points": _controls(),
         "checklist_markdown": checklist,
     }
+    compiled_payload = {key: value for key, value in compiled.items() if key != "checklist_markdown"}
+    compiled["compiled_sha256"] = hashlib.sha256(
+        json.dumps(compiled_payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    return compiled
 
 
 def _controls() -> list[str]:
