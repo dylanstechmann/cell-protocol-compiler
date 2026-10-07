@@ -12,7 +12,7 @@ This is a protocol formalization exercise. It is not a lab and it does not autho
 | id | What it abridges | Source |
 |---|---|---|
 | `e8_feeder_free_maintenance` | Feeder-free maintenance on the academic E8 formulation (Chen 2011), EDTA passage context, ROCK inhibitor for 24 h | [10.1038/nmeth.1593](https://doi.org/10.1038/nmeth.1593) |
-| `dual_smad_neural` | Adherent neural induction, 10 µM SB431542 + 200 ng/mL Noggin, SRM toward N2 | [10.1038/nbt.1529](https://doi.org/10.1038/nbt.1529) |
+| `dual_smad_neural` | Adherent neural induction, 10 µM SB431542 + 200 ng/mL Noggin as encoded (the paper's Methods give 10 nM and 500 ng/mL; see [Source audit](#source-audit)), SRM toward N2 | [10.1038/nbt.1529](https://doi.org/10.1038/nbt.1529) |
 | `giwi_cardiac` | Wnt activation then Wnt inhibition. CHIR defaults to 6 µM inside 2–12, not to the paper's 12 µM example | [10.1038/nprot.2012.150](https://doi.org/10.1038/nprot.2012.150) |
 | `hepatocyte_differentiation` | Quarantined source-audit record; it emits no recipe until a fresh transcription is reviewed | [Source audit](docs/hepatocyte-source-audit.md) |
 
@@ -90,6 +90,49 @@ changing units, widening parameter windows, or relaxing the feed-gap limit is
 rejected. Inactive alternatives still require finite, ordered bounds. Narrower
 windows and valid parameter values remain available for an explicit checklist
 variant; numeric and narrative changes still require review together.
+
+## Source audit
+
+A citation on a protocol says a paper exists, not that the number beside it came
+from that paper. `source-audit` prints a ledger that checks each encoded
+parameter against the primary source's own text:
+
+```bash
+PYTHONPATH=src python3 -m protocolcompiler.cli source-audit
+```
+
+For all seven encoded parameters it records the sentence quoted from the article
+text in PubMed Central (retrieved 2026-10-07 and identified by hash), where the
+sentence sits, the source's number converted to the encoded unit by arithmetic,
+the encoded value and window, and a verdict. At the review date:
+
+| Verdict | Parameters |
+|---|---|
+| Matches the source | `Y27632_uM` (10 µM, Chen 2011); `IWP2_uM` (5 µM, Lian 2013) |
+| Default inside the source's range | `CHIR99021_uM`: default 6 µM; the paper's optimum for its six lines is 12 µM and it recommends testing 6–14 µM. The 2–12 µM window admits 2–5 µM and excludes 13–14 µM |
+| Differs from the source | `SB431542_uM` and `Noggin_ng_per_mL` (below) |
+| Not stated in the source | `passage_confluence_percent`; `LDN193189_nM` (the paper uses Noggin and never mentions LDN-193189) |
+
+The two disagreements are in the dual-SMAD protocol and are **not resolved here**:
+
+| Parameter | Encoded (window) | Chambers et al. 2009, Materials and Methods > Neural Induction |
+|---|---|---|
+| `SB431542_uM` | 10 µM (5–10 µM) | "10 nM TGF-b inhibitor (SB431542, Tocris)", a thousandfold lower; the window excludes it |
+| `Noggin_ng_per_mL` | 200 ng/mL (100–300 ng/mL) | "500 ng/mL of Noggin", stated twice; the window excludes it |
+
+No default or window was changed. Which number the authors used cannot be told
+from the article text alone, and widening a concentration window is a biological
+decision for a reviewer. The disagreement is written into both parameter notes
+so a compiled checklist shows it (editing a note moves `protocol_sha256`; the
+numbers did not move).
+
+`source-audit` exits 1 if an encoded value, unit or window changes without its
+ledger entry being revisited, or if a verdict no longer follows from its own
+numbers; recorded disagreements exit 0 because they are a known state. A match
+means the number agrees with a sentence. It does not mean the protocol works,
+that the paper is right, or that a qualified reviewer approved the encoding.
+"Not stated" means a text search of the retrieved article found no such value.
+Supplementary methods, errata and later corrections were not read.
 
 ## Source-linked result records
 

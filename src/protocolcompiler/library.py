@@ -101,8 +101,16 @@ def dual_smad() -> Protocol:
             "is the paper's phenotype, not a yield you can assume."
         ),
         parameters=[
-            Parameter("SB431542_uM", 10, "µM", 5, 10, "Chambers et al. 2009 used 10 µM."),
-            Parameter("Noggin_ng_per_mL", 200, "ng/mL", 100, 300, "Chambers et al. 2009 used 200 ng/mL."),
+            Parameter("SB431542_uM", 10, "µM", 5, 10,
+                      "Source disagreement, unresolved: the Methods of Chambers et al. 2009 give "
+                      "10 nM, a thousandfold below this encoded 10 µM. The encoded value is not "
+                      "changed on one sentence and this repository holds no second source for it. "
+                      "See source-audit."),
+            Parameter("Noggin_ng_per_mL", 200, "ng/mL", 100, 300,
+                      "Source disagreement, unresolved: Chambers et al. 2009 give 500 ng/mL "
+                      "(twice), which this 100-300 ng/mL window excludes, so a planner bound by "
+                      "this window cannot reproduce the cited condition. Widening a window is a "
+                      "reviewer's decision. See source-audit."),
             Parameter("LDN193189_nM", 0, "nM", 0, 250,
                       "Leave at 0 to follow Chambers (Noggin). 100 nM is a later substitute for Noggin, not an addition to it."),
         ],
@@ -161,7 +169,10 @@ def giwi() -> Protocol:
         ),
         parameters=[
             Parameter("CHIR99021_uM", 6, "µM", 2, 12,
-                      "Default is mid-window, not the paper's 12 µM example. Titrate. Lian et al. 2013."),
+                      "Default is the bottom of the paper's recommended 6-14 µM test range, not its "
+                      "12 µM optimum for the six lines tested. This window also admits 2-5 µM, which "
+                      "the paper does not recommend, and excludes 13-14 µM, which it does. Titrate "
+                      "per line. Lian et al. 2013."),
             Parameter("IWP2_uM", 5, "µM", 2, 5,
                       "Lian et al. applied 5 µM IWP2 at differentiation day 3 for 48 h."),
         ],

@@ -12,11 +12,12 @@ from protocolcompiler.constraints import export_constraints
 from protocolcompiler.library import LIBRARY
 from protocolcompiler.schema import ProtocolError
 from protocolcompiler.result import ResultRecordError, validate_result_record
+from protocolcompiler.source_review import STATUS_INCONSISTENT, STATUS_STALE, audit
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Compile a published cell-culture checklist")
-    parser.add_argument("protocol", choices=[*sorted(LIBRARY), "validate-result"])
+    parser.add_argument("protocol", choices=[*sorted(LIBRARY), "validate-result", "source-audit"])
     parser.add_argument("--compiled-protocol", help="compiled protocol JSON for validate-result")
     parser.add_argument("--result", help="source-linked result record JSON for validate-result")
     parser.add_argument("--out", help="new validation receipt JSON path for validate-result")
@@ -26,6 +27,13 @@ def main(argv=None) -> int:
     group.add_argument("--constraints", action="store_true",
                        help="print the versioned planner constraint export instead of the compiled checklist")
     args = parser.parse_args(argv)
+    if args.protocol == "source-audit":
+        # Recorded disagreements are a known, documented state (exit 0). A stale or inconsistent
+        # ledger means an encoded parameter changed without its source being revisited (exit 1).
+        report = audit()
+        json.dump(report, sys.stdout, indent=2, allow_nan=False)
+        sys.stdout.write("\n")
+        return 1 if report["status"] in (STATUS_STALE, STATUS_INCONSISTENT) else 0
     if args.protocol == "validate-result":
         if not args.compiled_protocol or not args.result or not args.out:
             parser.error("validate-result requires --compiled-protocol, --result and --out")
