@@ -1,5 +1,8 @@
 # Cell protocol compiler
 
+This is a personal hobby and learning project, developed with substantial
+assistance from AI coding tools.
+
 Machine-readable research checklists for three published pluripotent-cell workflows, plus a fail-closed source-audit record for one hepatocyte outline. The validator rejects missing QC gates, absurd well volumes, hood collisions, and small-molecule values outside the encoded source window.
 
 This is a protocol formalization exercise. It is not a lab and it does not authorize one.
