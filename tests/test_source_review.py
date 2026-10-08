@@ -10,7 +10,7 @@ from protocolcompiler.cli import main as cli_main
 from protocolcompiler.library import LIBRARY
 from protocolcompiler.schema import Parameter
 
-# The encoded defaults and windows as of the 2026-10-07 source review. Widening a concentration
+# The encoded defaults and windows as of the 2026-10-07/08 source reviews. Widening a concentration
 # window is a biological decision (AGENTS.md). If one of these changes on purpose, revisit the
 # ledger entry for the same parameter in the same commit.
 ENCODED = {
@@ -65,7 +65,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(report["status"], sr.STATUS_DISAGREEMENTS)
         counts = report["counts"]
         self.assertEqual((counts[sr.MATCHES], counts[sr.INSIDE_SOURCE_RANGE], counts[sr.DIFFERS],
-                          counts[sr.NOT_STATED]), (2, 1, 2, 2))
+                          counts[sr.NOT_STATED]), (3, 1, 2, 1))
         self.assertEqual(counts["stale_ledger_entries"], 0)
         rows = {(row["protocol_id"], row["parameter"]): row for row in report["reviews"]}
         sb = rows[("dual_smad_neural", "SB431542_uM")]
@@ -78,11 +78,15 @@ class LedgerTests(unittest.TestCase):
         self.assertTrue(chir["source_value_within_encoded_window"])
         self.assertFalse(chir["source_range_within_encoded_window"])
         self.assertTrue(chir["encoded_window_extends_beyond_source_range"])
-        self.assertEqual(counts["window_conflicts_with_source"], 3)
+        # The two Chambers rows, CHIR99021, and the 85% passaging ceiling above Beers's 70-80%.
+        self.assertEqual(counts["window_conflicts_with_source"], 4)
+        confluence = rows[("e8_feeder_free_maintenance", "passage_confluence_percent")]
+        self.assertEqual(confluence["verdict"], sr.MATCHES)
+        self.assertTrue(confluence["encoded_window_extends_beyond_source_range"])
 
     def test_not_stated_is_a_search_result_not_a_disagreement(self):
         rows = [row for row in sr.audit()["reviews"] if row["verdict"] == sr.NOT_STATED]
-        self.assertEqual({row["parameter"] for row in rows}, {"passage_confluence_percent", "LDN193189_nM"})
+        self.assertEqual({row["parameter"] for row in rows}, {"LDN193189_nM"})
         for row in rows:
             self.assertTrue(row["search_terms"])
             self.assertIsNone(row["source_value_in_encoded_unit"])

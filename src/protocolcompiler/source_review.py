@@ -23,10 +23,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-REVIEW_DATE = "2026-10-07"
+REVIEW_DATE = "2026-10-08"
 REVIEW_METHOD = (
     "Full text of each article was retrieved from PubMed Central through NCBI E-utilities "
-    "(efetch, db=pmc, retmode=xml) on 2026-10-07 and read directly. Each encoded quantity was "
+    "(efetch, db=pmc, retmode=xml) and read directly (Chen, Chambers and Lian on 2026-10-07; Beers on 2026-10-08). Each encoded quantity was "
     "located by searching the article text. Supplementary methods, errata and later corrections "
     "were not read."
 )
@@ -116,19 +116,6 @@ E8 = SourceRecord(
             "encoded 'first 24 h after passage only' restriction comes from the separately cited "
             "ROCK-inhibitor literature (Watanabe et al. 2007), which this ledger did not read. The "
             "5 µM window floor is an authoring convention.",
-        ),
-        ParameterReview(
-            "e8_feeder_free_maintenance", "passage_confluence_percent", 80.0, "%", (70.0, 85.0),
-            "METHODS > Human ES Cell Culture",
-            ("Briefly, cells were washed twice with PBS/EDTA medium (0.5 mM EDTA in PBS, osmolarity "
-             "340 mOsm), then incubated with PBS/EDTA for 5 minutes at 37°C.",),
-            (), None, None, None, NOT_STATED,
-            "The passaging description gives no confluence percentage. The only 'confluen' matches "
-            "in the article text concern reprogramming (about 20% confluency before removing "
-            "hydrocortisone), not passaging. The encoded 80% target with a 70-85% window is not "
-            "sourced here; the library cites Beers et al. 2012 for passaging context, which this "
-            "ledger did not read. The parameter note already says to passage on morphology.",
-            search_terms=("confluen",),
         ),
     ),
 )
@@ -225,7 +212,37 @@ GIWI = SourceRecord(
     ),
 )
 
-SOURCE_RECORDS = (E8, DUAL_SMAD, GIWI)
+BEERS = SourceRecord(
+    pmcid="PMC3571618", pmid="23099485", doi="10.1038/nprot.2012.130",
+    title="Passaging and colony expansion of human pluripotent stem cells by enzyme-free dissociation "
+          "in chemically defined culture conditions",
+    retrieval_url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=3571618&retmode=xml",
+    retrieved_xml_sha256="ca471ecf1366a09311c3d96555cbb0fe199568ecfc57bef80c4a9492fcfbd35e",
+    retrieved_xml_bytes=97236,
+    pmc_license_statement=(
+        "This file is available for text mining. It may also be used consistent with the principles of "
+        "fair use under the copyright law."
+    ),
+    reviews=(
+        ParameterReview(
+            "e8_feeder_free_maintenance", "passage_confluence_percent", 80.0, "%", (70.0, 85.0),
+            "PROCEDURE > E8 maintenance, daily-feed step; Box on cryopreservation",
+            ("On each following day, repeat Step 8, monitor cells daily, and when confluence reaches "
+             "~80% repeat Steps 1-7 (usually between 3 and 5 d after seeding).",
+             "When cells reach to ~70-80% confluence, dissociate the cells with the EDTA method."),
+            ("~80%", "~70-80% confluence"), 80.0, "%", (70.0, 80.0), MATCHES,
+            "Reviewed 2026-10-08. The encoded 80% passaging target agrees with the procedure's "
+            "'~80%'. The same article gives ~70-80% elsewhere, so the encoded 85% window ceiling lies "
+            "above anything this source states and is surfaced as a window conflict; the ledger "
+            "does not narrow it. Chen et al. 2011 (PMC3084903, the other source for this protocol) "
+            "gives no passaging confluence: the only 'confluen' matches in its text concern "
+            "reprogramming. This is a protocol-paper figure for one formulation, not a validated "
+            "threshold for any particular line.",
+        ),
+    ),
+)
+
+SOURCE_RECORDS = (E8, BEERS, DUAL_SMAD, GIWI)
 
 
 def all_reviews() -> list[ParameterReview]:

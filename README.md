@@ -102,16 +102,16 @@ PYTHONPATH=src python3 -m protocolcompiler.cli source-audit
 ```
 
 For all seven encoded parameters it records the sentence quoted from the article
-text in PubMed Central (retrieved 2026-10-07 and identified by hash), where the
+text in PubMed Central (retrieved 2026-10-07 and 2026-10-08, identified by hash), where the
 sentence sits, the source's number converted to the encoded unit by arithmetic,
 the encoded value and window, and a verdict. At the review date:
 
 | Verdict | Parameters |
 |---|---|
-| Matches the source | `Y27632_uM` (10 µM, Chen 2011); `IWP2_uM` (5 µM, Lian 2013) |
+| Matches the source | `Y27632_uM` (10 µM, Chen 2011); `IWP2_uM` (5 µM, Lian 2013); `passage_confluence_percent` (80%, Beers 2012 states ~80%; it gives ~70–80% elsewhere, so the 85% window ceiling is above the source and is reported as a window conflict) |
 | Default inside the source's range | `CHIR99021_uM`: default 6 µM; the paper's optimum for its six lines is 12 µM and it recommends testing 6–14 µM. The 2–12 µM window admits 2–5 µM and excludes 13–14 µM |
 | Differs from the source | `SB431542_uM` and `Noggin_ng_per_mL` (below) |
-| Not stated in the source | `passage_confluence_percent`; `LDN193189_nM` (the paper uses Noggin and never mentions LDN-193189) |
+| Not stated in the source | `LDN193189_nM` (the paper uses Noggin and never mentions LDN-193189) |
 
 The two disagreements are in the dual-SMAD protocol and are **not resolved here**:
 
